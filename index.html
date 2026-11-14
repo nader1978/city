@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>City Services Guide | دليل خدمات المدينة</title>
+<meta name="description" content="Find verified city services, government offices and shops. ابحث عن خدمات المدينة الموثّقة.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏙️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="logo"><div class="mark">🏙️</div><span data-i18n="appName"></span></div>
+    <nav class="tabs" id="tabs">
+      <button data-tab="find" class="on">🔎 <span data-i18n="tabFind"></span></button>
+      <button data-tab="provide">➕ <span data-i18n="tabProvide"></span></button>
+      <button data-tab="admin" class="hidden" id="adminTab">🛡️ <span data-i18n="tabAdmin"></span> <span class="pill-count hidden" id="adminCount">0</span></button>
+    </nav>
+    <button class="langbtn" id="langBtn" type="button" aria-label="Language"></button>
+    <span class="who" id="who"></span>
+    <button class="authbtn" id="authBtn" type="button"></button>
+  </div>
+</header>
+
+<div class="demobar hidden" id="demobar"><div class="wrap"><span>🧪 <span data-i18n="demoBanner"></span></span><label><span data-i18n="viewAs"></span> <select id="roleSel"></select></label></div></div>
+
+<!-- FIND -->
+<main id="view-find">
+  <div class="hero">
+    <div class="wrap">
+      <h1 data-i18n="heroTitle"></h1>
+      <p data-i18n="heroSub"></p>
+      <div class="searchbox">
+        <input id="q" type="search" data-i18n-ph="searchPh" autocomplete="off">
+        <select id="areaSel" aria-label="Area"></select>
+      </div>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="chips" id="chips"></div>
+    <div id="findNotice"></div>
+    <div class="bar"><span id="resultCount"></span></div>
+    <div class="grid" id="grid"></div>
+  </div>
+</main>
+
+<!-- PROVIDE -->
+<main id="view-provide" class="hidden">
+  <section class="page wrap">
+    <h2 data-i18n="provTitle"></h2>
+    <p class="sub" data-i18n="provSub"></p>
+    <div id="provideGate"></div>
+    <div class="two" id="provideBody">
+      <div class="panel">
+        <h3 id="formTitle"></h3>
+        <form id="form" class="form" novalidate>
+          <label class="f"><span><span data-i18n="f_kind"></span> <span class="req">*</span></span>
+            <select name="kind" id="kindSel" required></select>
+          </label>
+          <label class="f"><span><span data-i18n="f_category"></span> <span class="req">*</span></span>
+            <select name="category" required id="catSel"></select>
+          </label>
+
+          <div class="sect" data-i18n="sectNames"></div>
+          <label class="f"><span><span data-i18n="f_name"></span> <span class="req">*</span></span>
+            <input name="name" maxlength="120" dir="ltr" placeholder="e.g. Building Permits Office">
+          </label>
+          <label class="f"><span><span data-i18n="f_nameAr"></span> <span class="req">*</span></span>
+            <input name="nameAr" maxlength="120" dir="rtl" placeholder="مثال: مكتب تصاريح البناء">
+          </label>
+          <label class="f full"><span data-i18n="f_description"></span>
+            <textarea name="description" maxlength="1500" dir="ltr" placeholder="What do you offer? Who is it for?"></textarea>
+          </label>
+          <label class="f full"><span data-i18n="f_descriptionAr"></span>
+            <textarea name="descriptionAr" maxlength="1500" dir="rtl" placeholder="ما الخدمات التي تقدمونها؟ ولمن؟"></textarea>
+          </label>
+          <div class="full small" data-i18n="nameRule"></div>
+
+          <div class="sect" data-i18n="sectContact"></div>
+          <label class="f"><span><span data-i18n="f_area"></span> <span class="req">*</span></span>
+            <input name="area" required maxlength="60" data-i18n-ph="ph_area">
+          </label>
+          <label class="f"><span data-i18n="f_hours"></span>
+            <input name="hours" maxlength="120" data-i18n-ph="ph_hours">
+          </label>
+          <label class="f full"><span data-i18n="f_address"></span>
+            <input name="address" maxlength="200" data-i18n-ph="ph_address">
+          </label>
+          <label class="f"><span><span data-i18n="f_phone"></span> <span class="req">*</span></span>
+            <input name="phone" required maxlength="40" dir="ltr" placeholder="+971 …">
+          </label>
+          <label class="f"><span data-i18n="f_whatsapp"></span>
+            <input name="whatsapp" maxlength="40" dir="ltr" placeholder="+971 …">
+          </label>
+          <label class="f"><span data-i18n="f_email"></span>
+            <input name="email" type="email" maxlength="120" dir="ltr">
+          </label>
+          <label class="f"><span data-i18n="f_website"></span>
+            <input name="website" maxlength="200" dir="ltr" placeholder="https://…">
+          </label>
+          <label class="f full"><span><span data-i18n="f_mapLink"></span> <span class="hint" data-i18n="hint_map"></span></span>
+            <input name="mapLink" maxlength="400" dir="ltr" placeholder="https://maps.google.com/…">
+          </label>
+
+          <div class="sect" data-i18n="sectDetails"></div>
+          <label class="f full"><span data-i18n="f_fees"></span>
+            <input name="fees" maxlength="200" data-i18n-ph="ph_fees">
+          </label>
+          <label class="f full"><span data-i18n="f_requirements"></span>
+            <textarea name="requirements" maxlength="1500" data-i18n-ph="ph_requirements"></textarea>
+          </label>
+          <label class="f full"><span><span data-i18n="f_tags"></span> <span class="hint" data-i18n="hint_tags"></span></span>
+            <input name="tags" maxlength="300" data-i18n-ph="ph_tags">
+          </label>
+          <div class="full actions">
+            <button class="btn" type="submit" id="submitBtn"></button>
+            <button class="btn ghost hidden" type="button" id="cancelEdit" data-i18n="cancelEdit"></button>
+            <span class="formmsg" id="formMsg"></span>
+          </div>
+        </form>
+      </div>
+      <div class="panel">
+        <h3 data-i18n="mySubs"></h3>
+        <div class="sublist" id="mySubs"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ADMIN -->
+<main id="view-admin" class="hidden">
+  <section class="page wrap">
+    <h2 data-i18n="admTitle"></h2>
+    <p class="sub" data-i18n="admSub"></p>
+    <div class="adm-head" id="admStats"></div>
+    <div id="admBody"></div>
+  </section>
+</main>
+
+<div class="modal-bg" id="modal"><div class="modal" id="modalBox"></div></div>
+<div class="toast" id="toast"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

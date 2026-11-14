@@ -1,0 +1,40 @@
+rules_version = '2';
+
+// City Services Guide — Firestore security rules
+// Paste this into Firebase Console → Firestore Database → Rules → Publish.
+// Replace admin@example.com with the same admin email(s) you put in config.js.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in [
+          'admin@example.com'
+        ];
+    }
+
+    // Published (verified) listings: everyone can read, only admins write.
+    match /listings/{listingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Each provider's submissions live in one document keyed by their user id.
+    // Providers read/write only their own; admins read/write all.
+    // (A provider editing their own status can't publish anything:
+    //  only admins can write to /listings.)
+    match /submissions/{userId} {
+      allow read, write: if signedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Everything else is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
