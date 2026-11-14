@@ -1,26 +1,25 @@
 // ============================================================
 //  City Services Guide — configuration
 // ============================================================
-//  1. Paste your Firebase web app config below (see README.md).
-//  2. Put the admin's Google email address(es) in adminEmails.
-//     The same emails must also be in firestore.rules.
-//
-//  While apiKey still says "PASTE_YOUR_API_KEY", the site runs in
-//  DEMO MODE: everything is saved only in the visitor's browser.
+//  Firebase project: faqouscityappdb
+//  The Firebase web config is meant to be public (it is not a password).
+//  Your data is protected by the rules in firestore.rules.
 // ============================================================
 
 export default {
   firebase: {
-    apiKey: "PASTE_YOUR_API_KEY",
-    authDomain: "your-project.firebaseapp.com",
-    projectId: "your-project",
-    storageBucket: "your-project.appspot.com",
-    messagingSenderId: "000000000000",
-    appId: "1:000000000000:web:0000000000000000"
+    apiKey: "AIzaSyCtfLipWnJjxUFIlVtW5xo2S5tCZOPctSY",
+    authDomain: "faqouscityappdb.firebaseapp.com",
+    projectId: "faqouscityappdb",
+    storageBucket: "faqouscityappdb.firebasestorage.app",
+    messagingSenderId: "349200622645",
+    appId: "1:349200622645:web:f25c837018a022a2bd3d7c",
+    measurementId: "G-6ZF9KY9SRX"
   },
 
   // Google accounts that can approve / reject listings
+  // (must match the list in firestore.rules)
   adminEmails: [
-    "admin@example.com"
+    "nader.alnajjar@gmail.com"
   ]
 };

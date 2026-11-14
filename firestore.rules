@@ -2,7 +2,7 @@ rules_version = '2';
 
 // City Services Guide — Firestore security rules
 // Paste this into Firebase Console → Firestore Database → Rules → Publish.
-// Replace admin@example.com with the same admin email(s) you put in config.js.
+// Admin email(s) must match adminEmails in config.js.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -14,7 +14,7 @@ service cloud.firestore {
       return signedIn()
         && request.auth.token.email_verified == true
         && request.auth.token.email.lower() in [
-          'admin@example.com'
+          'nader.alnajjar@gmail.com'
         ];
     }
 
