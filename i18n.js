@@ -99,11 +99,11 @@ const CATS = [
 ];
 
 const EXTRA = {
- en:{ signInBtn:'Sign in with Google', signOut:'Sign out', provNeedSignIn:'Sign in with your Google account to list your service.',
+ en:{ signInBtn:'Sign in with Google', directions:'Directions', signInShort:'Sign in', signOut:'Sign out', provNeedSignIn:'Sign in with your Google account to list your service.',
   demoBanner:'Demo mode: data is saved only in this browser. Connect Firebase (see README) to go live.', viewAs:'View as:',
   role_resident:'Resident', role_provider:'Provider', role_admin:'Admin', from:'From', signInFail:'Sign-in failed. Please try again.',
   noPerm:'You don’t have permission to do that.', err_domain:'Sign-in blocked: add this domain in Firebase → Authentication → Settings → Authorized domains:', err_provider:'Google sign-in is not enabled. Turn it on in Firebase → Authentication → Sign-in method.', err_popup:'Your browser blocked the sign-in popup. Allow popups for this site and try again.', loadFail:'The directory couldn’t be loaded right now.' },
- ar:{ signInBtn:'تسجيل الدخول بحساب Google', signOut:'تسجيل الخروج', provNeedSignIn:'سجّل الدخول بحساب Google لإضافة خدمتك.',
+ ar:{ signInBtn:'تسجيل الدخول بحساب Google', directions:'الاتجاهات', signInShort:'دخول', signOut:'تسجيل الخروج', provNeedSignIn:'سجّل الدخول بحساب Google لإضافة خدمتك.',
   demoBanner:'وضع تجريبي: تُحفظ البيانات في هذا المتصفح فقط. اربط Firebase (راجع ملف README) لتشغيل الموقع فعلياً.', viewAs:'العرض كـ:',
   role_resident:'مواطن / مقيم', role_provider:'مقدّم خدمة', role_admin:'مسؤول', from:'من', signInFail:'تعذّر تسجيل الدخول. حاول مرة أخرى.',
   noPerm:'ليست لديك صلاحية للقيام بذلك.', err_domain:'تم حظر تسجيل الدخول: أضف هذا النطاق في Firebase ← Authentication ← Settings ← Authorized domains:', err_provider:'تسجيل الدخول عبر Google غير مفعّل. فعّله من Firebase ← Authentication ← Sign-in method.', err_popup:'حظر المتصفح نافذة تسجيل الدخول. اسمح بالنوافذ المنبثقة لهذا الموقع وحاول مجدداً.', loadFail:'تعذّر تحميل الدليل حالياً.' }

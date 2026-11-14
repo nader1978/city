@@ -25,6 +25,8 @@ let listings=[], mySub=null, allSubs=[];
 const st = {tab:'find', q:'', cat:'all', area:'all', editId:null, admView:'pending'};
 
 const $ = s=>document.querySelector(s);
+/* Google Analytics events (does nothing if analytics is blocked) */
+const track=(name,params={})=>{ try{ if(typeof window.gtag==='function') window.gtag('event',name,params); }catch(e){} };
 const esc = s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const safeUrl = u=>{u=String(u||'').trim(); return /^https?:\/\//i.test(u)?u:'';};
 const newId = ()=>'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -49,13 +51,14 @@ function applyLang(){
   $('#submitBtn').textContent=t(st.editId?'resubmit':'submit');
   renderAll();
 }
-$('#langBtn').addEventListener('click',()=>{ lang=lang==='ar'?'en':'ar'; try{localStorage.setItem('csg-lang',lang);}catch(e){} applyLang(); });
+$('#langBtn').addEventListener('click',()=>{ lang=lang==='ar'?'en':'ar'; track('change_language',{language:lang}); try{localStorage.setItem('csg-lang',lang);}catch(e){} applyLang(); });
 function renderAll(){ renderAuth(); renderFind(); renderProvideGate(); renderMySubs(); renderAdmin(); }
 
 /* ---------- tabs ---------- */
 $('#tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-tab]');if(b)setTab(b.dataset.tab);});
 function setTab(v){
   st.tab=v;
+  track('page_view',{page_title:'Tab: '+v, page_location:location.origin+location.pathname+(v==='find'?'':'#'+v), language:lang});
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===v));
   ['find','provide','admin'].forEach(x=>$('#view-'+x).classList.toggle('hidden',x!==v));
   try{ history.replaceState(null,'',v==='find'?location.pathname+location.search:'#'+v); }catch(e){ try{location.hash=v==='find'?'':v;}catch(_){} }
@@ -68,8 +71,14 @@ function renderChips(){
   $('#chips').innerHTML = `<button class="chip ${st.cat==='all'?'on':''}" data-c="all">${esc(t('all'))}</button>` +
     CATS.map(c=>`<button class="chip ${st.cat===c.id?'on':''}" data-c="${c.id}">${c.icon} ${esc(c[lang])}${counts[c.id]?` · ${counts[c.id]}`:''}</button>`).join('');
 }
-$('#chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;st.cat=b.dataset.c;renderFind();});
-$('#q').addEventListener('input',e=>{st.q=e.target.value;renderGrid();});
+$('#chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;st.cat=b.dataset.c;renderFind();track('select_category',{category:st.cat});});
+let searchTimer=null;
+$('#q').addEventListener('input',e=>{
+  st.q=e.target.value; renderGrid();
+  clearTimeout(searchTimer);
+  const term=st.q.trim();
+  if(term.length>=2) searchTimer=setTimeout(()=>track('search',{search_term:term, results:listings.filter(matches).length, language:lang}),1500);
+});
 $('#areaSel').addEventListener('change',e=>{st.area=e.target.value;renderGrid();});
 function renderAreas(){
   const areas=[...new Set(listings.map(l=>(l.area||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,locale()));
@@ -105,6 +114,8 @@ function renderFind(){renderChips();renderAreas();renderGrid();}
 
 function openDetail(id){
   const l=listings.find(x=>x._id===id); if(!l) return;
+  $('#modal').dataset.id=l._id;
+  track('view_item',{item_id:l._id, item_name:l.name||l.nameAr, item_category:l.category, area:l.area||''});
   const web=safeUrl(l.website), map=safeUrl(l.mapLink);
   const row=(ic,lbl,val)=>val?`<div class="it"><div class="ic">${ic}</div><div><div class="lbl">${esc(t(lbl))}</div><div class="val" dir="auto">${val}</div></div></div>`:'';
   const tel=p=>`<span class="ltr">${esc(p)}</span> · <a href="tel:${esc(p.replace(/[^\d+]/g,''))}">${esc(t('call'))}</a>`;
@@ -119,6 +130,7 @@ function openDetail(id){
       ${l.area?`<div class="small" dir="auto">📍 ${esc(l.area)}</div>`:''}
     </div>
     <div class="mb">
+      ${quickActions(l)}
       ${L(l,'description')?`<p class="d" dir="auto">${esc(L(l,'description'))}</p>`:''}
       <div class="info">
         ${row('🕒','hours',esc(l.hours))}
@@ -132,10 +144,33 @@ function openDetail(id){
       </div>
       ${l.approvedAt?`<p class="small" style="margin:18px 0 0">${esc(t('lastVerified'))}: ${esc(fmtDate(l.approvedAt))}</p>`:''}
     </div>`;
-  $('#modal').classList.add('open');
+  openSheet();
 }
-$('#modal').addEventListener('click',e=>{if(e.target.id==='modal'||e.target.closest('[data-close]'))$('#modal').classList.remove('open');});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#modal').classList.remove('open');});
+function quickActions(l){
+  const btns=[];
+  if(l.phone) btns.push(`<a class="q-call" href="tel:${esc(l.phone.replace(/[^\d+]/g,''))}" data-ev="call">📞 ${esc(t('call'))}</a>`);
+  const wa=(l.whatsapp||'').replace(/[^\d]/g,'');
+  if(wa) btns.push(`<a class="q-wa" href="https://wa.me/${wa}" target="_blank" rel="noopener" data-ev="whatsapp">💬 ${esc(t('whatsapp'))}</a>`);
+  const map=safeUrl(l.mapLink) || (l.address ? 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent([l.address,l.area].filter(Boolean).join(', ')) : '');
+  if(map) btns.push(`<a class="q-map" href="${esc(map)}" target="_blank" rel="noopener" data-ev="directions">📍 ${esc(t('directions'))}</a>`);
+  return btns.length?`<div class="quick">${btns.join('')}</div>`:'';
+}
+/* the detail sheet closes with the phone's Back button too */
+function openSheet(){
+  $('#modal').classList.add('open'); document.body.style.overflow='hidden';
+  try{ if(!history.state?.sheet) history.pushState({sheet:1},''); }catch(e){}
+}
+function closeSheet(fromPop){
+  if(!$('#modal').classList.contains('open')) return;
+  $('#modal').classList.remove('open'); document.body.style.overflow='';
+  if(!fromPop){ try{ if(history.state?.sheet) history.back(); }catch(e){} }
+}
+window.addEventListener('popstate',()=>closeSheet(true));
+$('#modal').addEventListener('click',e=>{
+  const a=e.target.closest('a[data-ev]'); if(a){ const l=listings.find(x=>x._id===$('#modal').dataset.id); track('contact_'+a.dataset.ev,{item_id:l?._id, item_name:l?.name||l?.nameAr}); }
+  if(e.target.id==='modal'||e.target.closest('[data-close]')) closeSheet();
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();});
 
 /* ---------- PROVIDE ---------- */
 function renderProvideGate(){
@@ -210,7 +245,7 @@ $('#form').addEventListener('submit',async e=>{
   $('#submitBtn').disabled=true;
   const ok=await saveMyItem(id,{...data,status:'pending',note:'',submittedAt:new Date().toISOString()});
   $('#submitBtn').disabled=false;
-  if(ok){ resetForm(); $('#formMsg').style.color='var(--ok)'; $('#formMsg').textContent=t('sent'); }
+  if(ok){ track('submit_listing',{category:data.category}); resetForm(); $('#formMsg').style.color='var(--ok)'; $('#formMsg').textContent=t('sent'); }
 });
 
 /* ---------- ADMIN ---------- */
@@ -306,7 +341,8 @@ function renderAuth(){
   const b=$('#authBtn'); if(!b) return;
   if(!store){ b.classList.add('hidden'); return; }
   b.classList.remove('hidden');
-  b.textContent = me ? t('signOut') : t('signInBtn');
+  const small=window.matchMedia('(max-width:700px)').matches;
+  b.textContent = me ? t('signOut') : t(small?'signInShort':'signInBtn');
   b.classList.toggle('out', !!me);
   $('#who').textContent = me ? (me.name||me.email) : '';
   $('#adminTab').classList.toggle('hidden', !me?.isAdmin);
@@ -331,6 +367,7 @@ async function doSignIn(){
 }
 $('#authBtn').addEventListener('click',()=>{ if(me) store.signOut(); else doSignIn(); });
 $('#roleSel').addEventListener('change',e=>store.setRole(e.target.value));
+window.matchMedia('(max-width:700px)').addEventListener?.('change',()=>renderAuth());
 
 function onUser(u){
   me=u;
