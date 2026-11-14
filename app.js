@@ -28,7 +28,7 @@ const $ = s=>document.querySelector(s);
 const esc = s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const safeUrl = u=>{u=String(u||'').trim(); return /^https?:\/\//i.test(u)?u:'';};
 const newId = ()=>'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-function toast(m){const el=$('#toast');el.textContent=m;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2600);}
+function toast(m,ms=2600){const el=$('#toast');el.textContent=m;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),ms);}
 function pick(o){const r={};FIELDS.forEach(k=>r[k]=String(o?.[k]??'').trim());return r;}
 /* Arabic-aware search normalisation */
 const norm = s=>String(s||'').toLowerCase()
@@ -314,7 +314,21 @@ function renderAuth(){
     $('#roleSel').innerHTML=['resident','provider','admin'].map(r=>`<option value="${r}" ${store.role===r?'selected':''}>${esc(t('role_'+r))}</option>`).join('');
   }
 }
-async function doSignIn(){ try{ await store.signIn(); }catch(err){ console.error(err); if(err?.code!=='auth/popup-closed-by-user') toast(t('signInFail')); } }
+async function doSignIn(){
+  try{ await store.signIn(); }
+  catch(err){
+    console.error(err);
+    const c=err?.code||'';
+    if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request') return;
+    const msg={
+      'auth/unauthorized-domain':t('err_domain')+' '+location.hostname,
+      'auth/operation-not-allowed':t('err_provider'),
+      'auth/configuration-not-found':t('err_provider'),
+      'auth/popup-blocked':t('err_popup')
+    }[c] || t('signInFail')+(c?' ('+c+')':'');
+    toast(msg,9000);
+  }
+}
 $('#authBtn').addEventListener('click',()=>{ if(me) store.signOut(); else doSignIn(); });
 $('#roleSel').addEventListener('change',e=>store.setRole(e.target.value));
 
