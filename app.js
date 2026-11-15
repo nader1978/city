@@ -70,6 +70,7 @@ function applyLang(){
   $('#formTitle').textContent=t(st.editId?'editListing':'newListing');
   $('#submitBtn').textContent=t(st.editId?'resubmit':'submit');
   renderAll();
+  if(st.tab==='admin'&&st.admSec==='look'&&lookDraft) paintLookPreview();
 }
 $('#langBtn').addEventListener('click',()=>{ lang=lang==='ar'?'en':'ar'; track('change_language',{language:lang}); try{localStorage.setItem('csg-lang',lang);}catch(e){} applyLang(); });
 function renderAll(){ renderAuth(); renderFind(); renderProvideGate(); renderMySubs(); renderAdmin(); }
@@ -77,6 +78,7 @@ function renderAll(){ renderAuth(); renderFind(); renderProvideGate(); renderMyS
 /* ---------- tabs ---------- */
 $('#tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-tab]');if(b)setTab(b.dataset.tab);});
 function setTab(v){
+  if(v!=='admin') leaveLook();
   st.tab=v;
   track('page_view',{page_title:'Tab: '+v, page_location:location.origin+location.pathname+(v==='find'?'':'#'+v), language:lang});
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===v));
@@ -278,19 +280,20 @@ function flatSubs(){
   return out.sort((a,b)=>(a.submittedAt||'').localeCompare(b.submittedAt||''));
 }
 function renderAdminTabs(){
-  const secs=['review','ads','traffic','admins'];
+  const secs=['review','ads','look','traffic','admins'];
   $('#admTabs').innerHTML=secs.map(k=>`<button class="${st.admSec===k?'on':''}" data-sec="${k}">${esc(t('admSec_'+k))}</button>`).join('');
 }
-$('#admTabs').addEventListener('click',e=>{ const b=e.target.closest('button[data-sec]'); if(!b) return; st.admSec=b.dataset.sec; renderAdmin(); });
+$('#admTabs').addEventListener('click',e=>{ const b=e.target.closest('button[data-sec]'); if(!b) return; if(b.dataset.sec!=='look') leaveLook(); st.admSec=b.dataset.sec; renderAdmin(); });
 function renderAdmin(){
   if(!me?.isAdmin) return;
   renderAdminTabs();
   { const all=flatSubs(), n=all.filter(i=>i.status==='pending'||i.status==='removal').length; $('#adminCount').textContent=n; $('#adminCount').classList.toggle('hidden',!n); }
   $('#admStats').classList.toggle('hidden', st.admSec!=='review');
-  { const h=$('#view-admin h2'), p=$('#view-admin .sub'); h.textContent=t({review:'admTitle',traffic:'tr_title',admins:'adm_title',ads:'ad_titleT'}[st.admSec]); p.textContent=t({review:'admSub',traffic:'tr_sub',admins:'adm_sub',ads:'ad_sub'}[st.admSec]); }
+  { const h=$('#view-admin h2'), p=$('#view-admin .sub'); h.textContent=t({review:'admTitle',traffic:'tr_title',admins:'adm_title',ads:'ad_titleT',look:'lk_title'}[st.admSec]); p.textContent=t({review:'admSub',traffic:'tr_sub',admins:'adm_sub',ads:'ad_sub',look:'lk_sub'}[st.admSec]); }
   if(st.admSec==='traffic'){ renderTraffic(); return; }
   if(st.admSec==='admins'){ renderAdmins(); return; }
   if(st.admSec==='ads'){ renderAdsAdmin(); return; }
+  if(st.admSec==='look'){ renderLook(); return; }
   const all=flatSubs();
   const groups={pending:all.filter(i=>i.status==='pending'),removal:all.filter(i=>i.status==='removal'),rejected:all.filter(i=>i.status==='rejected')};
   const n=groups.pending.length+groups.removal.length;
@@ -467,6 +470,132 @@ $('#admBody').addEventListener('click',async e=>{
   }catch(err){ handleWriteErr(err); unlock(); }
 });
 
+
+/* ================= SITE LOOK: logo, name, colour theme, banner ================= */
+const THEMES={ teal:['#0f6b5c','#f2a93b'], navy:['#16365c','#f2a93b'], emerald:['#047857','#fbbf24'], maroon:['#7a1f2b','#d4a24c'], royal:['#4c2a85','#f59e0b'], ocean:['#0b5f8a','#fbbf24'], charcoal:['#2b3440','#e0b04a'] };
+const DEF={ enName:T.en.appName, arName:T.ar.appName, enHT:T.en.heroTitle, arHT:T.ar.heroTitle, enHS:T.en.heroSub, arHS:T.ar.heroSub };
+let site={}, lookDraft=null;
+const hx=h=>{ h=String(h||'').replace('#',''); if(h.length===3) h=h.split('').map(c=>c+c).join(''); const n=parseInt(h,16); return isNaN(n)||h.length!==6?null:[n>>16&255,n>>8&255,n&255]; };
+const toHex=a=>'#'+a.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');
+const mixHex=(a,b,f)=>{ const x=hx(a)||[0,0,0], y=hx(b)||[0,0,0]; return toHex(x.map((v,i)=>v+(y[i]-v)*f)); };
+const lumOf=h=>{ const c=(hx(h)||[0,0,0]).map(v=>{ v/=255; return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4); }); return .2126*c[0]+.7152*c[1]+.0722*c[2]; };
+const contrastOf=(a,b)=>{ const x=lumOf(a), y=lumOf(b); return (Math.max(x,y)+.05)/(Math.min(x,y)+.05); };
+const validHex=h=>!!hx(h);
+function lookColors(s){ return s.theme==='custom' ? [validHex(s.brand)?s.brand:THEMES.teal[0], validHex(s.accent)?s.accent:THEMES.teal[1]] : (THEMES[s.theme]||THEMES.teal); }
+function heroVars(s,brand){
+  const mode=s.heroMode||'theme';
+  if(mode==='photo'&&s.heroPhoto){ const d=Math.max(0,Math.min(80,+s.heroDim||35))/100;
+    return {bg:`linear-gradient(rgba(0,0,0,${d}),rgba(0,0,0,${Math.min(.9,d+.15)})), url("${s.heroPhoto}") center/cover no-repeat`, ink:'#fff', sub:'rgba(255,255,255,.88)', photo:true}; }
+  const c=mode==='color'&&validHex(s.heroColor)?s.heroColor:brand, light=contrastOf(c,'#ffffff')<3.2;
+  return {bg:c, ink:light?'#14231f':'#fff', sub:light?'rgba(20,35,31,.75)':'rgba(255,255,255,.82)', photo:false};
+}
+function paintHero(el,s,brand){ if(!el) return; const v=heroVars(s,brand); el.style.setProperty('--hero-bg',v.bg); el.style.setProperty('--hero-ink',v.ink); el.style.setProperty('--hero-sub',v.sub); el.classList.toggle('photo',v.photo); }
+function applyLook(s){
+  s=s||{}; const [b,a]=lookColors(s), r=document.documentElement.style;
+  r.setProperty('--brand',b); r.setProperty('--brand-2',mixHex(b,'#000000',.22)); r.setProperty('--brand-soft',mixHex(b,'#ffffff',.9)); r.setProperty('--accent',a);
+  const tc=document.querySelector('meta[name=theme-color]'); if(tc) tc.content=b;
+  const mk=$('header .logo .mark'); if(mk) mk.innerHTML=s.logo?`<img src="${esc(s.logo)}" alt="">`:'🏙️';
+  const fav=document.querySelector('link[rel=icon]'); if(fav) fav.href=s.logo||'icons/icon-192.png';
+  T.en.appName=s.nameEn||DEF.enName; T.ar.appName=s.nameAr||DEF.arName;
+  T.en.heroTitle=s.heroTitleEn||DEF.enHT; T.ar.heroTitle=s.heroTitleAr||DEF.arHT; T.en.heroSub=s.heroSubEn||DEF.enHS; T.ar.heroSub=s.heroSubAr||DEF.arHS;
+  paintHero($('#view-find .hero'),s,b);
+  document.title=t('appName');
+  document.querySelectorAll('[data-i18n="appName"],[data-i18n="heroTitle"],[data-i18n="heroSub"]').forEach(el=>el.textContent=t(el.dataset.i18n));
+}
+/* show the saved look straight away on the next visit (no flash of the default colours) */
+try{ const c=JSON.parse(localStorage.getItem('csg-site')||'null'); if(c){ site=c; applyLook(site); } }catch(e){}
+function setSite(s){ site=s||{}; try{ localStorage.setItem('csg-site',JSON.stringify(site)); }catch(e){ try{ const {heroPhoto,...rest}=site; localStorage.setItem('csg-site',JSON.stringify(rest)); }catch(_){} } if(!lookDraft) applyLook(site); }
+function leaveLook(){ if(lookDraft){ lookDraft=null; applyLook(site); } }
+
+/* ---------- ADMIN → APPEARANCE ---------- */
+function shrinkTo(file,maxW,maxH,png){ return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onerror=()=>rej(new Error('read')); fr.onload=()=>{ const im=new Image(); im.onerror=()=>rej(new Error('image')); im.onload=()=>{
+  const r=Math.min(1,maxW/im.width,maxH/im.height), w=Math.max(1,Math.round(im.width*r)), h=Math.max(1,Math.round(im.height*r));
+  const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d'); if(!png){ g.fillStyle='#fff'; g.fillRect(0,0,w,h); } g.drawImage(im,0,0,w,h);
+  if(png){ const out=c.toDataURL('image/png'); if(out.length<160000) return res(out); }
+  let q=.82, out=c.toDataURL(png?'image/webp':'image/jpeg',q); if(png&&!out.startsWith('data:image/webp')) out=c.toDataURL('image/jpeg',q);
+  while(out.length>(png?120000:450000)&&q>.4){ q-=.08; out=c.toDataURL(png?'image/webp':'image/jpeg',q); } res(out); }; im.src=fr.result; }; fr.readAsDataURL(file); }); }
+function renderLook(){
+  if(!lookDraft) lookDraft={theme:'teal',heroMode:'theme',heroDim:35,...site};
+  const d=lookDraft, [b,a]=lookColors(d), mode=d.heroMode||'theme';
+  const sw=Object.entries(THEMES).map(([k,[c1,c2]])=>`<button type="button" class="lk-sw ${d.theme===k?'on':''}" data-theme="${k}"><i style="background:${c1};--a:${c2}"></i>${esc(t('lk_th_'+k))}</button>`).join('')
+    +`<button type="button" class="lk-sw ${d.theme==='custom'?'on':''}" data-theme="custom"><i style="background:conic-gradient(#e11d48,#f59e0b,#16a34a,#0ea5e9,#7c3aed,#e11d48);--a:#fff"></i>${esc(t('lk_th_custom'))}</button>`;
+  const lowHeader=contrastOf(b,'#ffffff')<4.5;
+  const v=(k,def)=>esc(d[k]??def??'');
+  $('#admBody').innerHTML=`<div class="two">
+  <form id="lookForm" class="panel" novalidate>
+    <h3>${esc(t('lk_secBrand'))}</h3>
+    <div class="form">
+      <label class="f"><span>${esc(t('lk_nameEn'))}</span><input name="nameEn" maxlength="40" dir="ltr" placeholder="${esc(DEF.enName)}" value="${v('nameEn')}"></label>
+      <label class="f"><span>${esc(t('lk_nameAr'))}</span><input name="nameAr" maxlength="40" dir="rtl" placeholder="${esc(DEF.arName)}" value="${v('nameAr')}"></label>
+      <div class="f full"><span>${esc(t('lk_logo'))} <span class="hint">${esc(t('lk_logoHint'))}</span></span>
+        <div class="lk-logo"><div class="mk">${d.logo?`<img src="${esc(d.logo)}" alt="">`:'🏙️'}</div><input type="file" id="lkLogo" accept="image/*" aria-label="${esc(t('lk_logo'))}">${d.logo?`<button type="button" class="btn ghost sm" data-lkclear="logo">${esc(t('ad_removeImg'))}</button>`:''}</div></div>
+    </div>
+    <h3 style="margin-top:22px">${esc(t('lk_secTheme'))}</h3>
+    <div class="lk-swatches">${sw}</div>
+    ${d.theme==='custom'?`<div class="form" style="margin-top:14px">
+      <label class="f"><span>${esc(t('lk_main'))}</span><span class="lk-color"><input type="color" name="brand" value="${esc(b)}"><code>${esc(b)}</code></span></label>
+      <label class="f"><span>${esc(t('lk_accent'))}</span><span class="lk-color"><input type="color" name="accent" value="${esc(a)}"><code>${esc(a)}</code></span></label></div>`:''}
+    ${lowHeader?`<p class="lk-warn">${esc(t('lk_lowContrast'))}</p>`:''}
+    <h3 style="margin-top:22px">${esc(t('lk_secBanner'))}</h3>
+    <div class="lk-modes" role="radiogroup">${['theme','color','photo'].map(m=>`<label><input type="radio" name="heroMode" value="${m}" ${mode===m?'checked':''}> ${esc(t('lk_mode_'+m))}</label>`).join('')}</div>
+    <div class="form" style="margin-top:14px">
+      ${mode==='color'?`<label class="f full"><span>${esc(t('lk_bannerColor'))}</span><span class="lk-color"><input type="color" name="heroColor" value="${esc(validHex(d.heroColor)?d.heroColor:b)}"><code>${esc(validHex(d.heroColor)?d.heroColor:b)}</code></span></label>`:''}
+      ${mode==='photo'?`<label class="f full"><span>${esc(t('lk_photo'))} <span class="hint">${esc(t('lk_photoHint'))}</span></span><input type="file" id="lkPhoto" accept="image/*"></label>
+        ${!d.heroPhoto?`<p class="small full" style="margin:0">${esc(t('lk_noPhoto'))}</p>`:''}
+        <label class="f full"><span>${esc(t('lk_dim'))}: <b id="lkDimV">${+d.heroDim||35}%</b></span><input type="range" name="heroDim" min="0" max="80" step="5" value="${+d.heroDim||35}"></label>`:''}
+      <label class="f"><span>${esc(t('lk_htEn'))}</span><input name="heroTitleEn" maxlength="60" dir="ltr" placeholder="${esc(DEF.enHT)}" value="${v('heroTitleEn')}"></label>
+      <label class="f"><span>${esc(t('lk_htAr'))}</span><input name="heroTitleAr" maxlength="60" dir="rtl" placeholder="${esc(DEF.arHT)}" value="${v('heroTitleAr')}"></label>
+      <label class="f"><span>${esc(t('lk_hsEn'))}</span><input name="heroSubEn" maxlength="120" dir="ltr" placeholder="${esc(DEF.enHS)}" value="${v('heroSubEn')}"></label>
+      <label class="f"><span>${esc(t('lk_hsAr'))}</span><input name="heroSubAr" maxlength="120" dir="rtl" placeholder="${esc(DEF.arHS)}" value="${v('heroSubAr')}"></label>
+    </div>
+    <div class="actions" style="margin-top:18px"><button class="btn" type="submit">${esc(t('lk_save'))}</button><button class="btn ghost" type="button" data-lkundo>${esc(t('lk_undo'))}</button><button class="btn ghost" type="button" data-lkreset>${esc(t('lk_reset'))}</button><span class="formmsg" id="lkMsg"></span></div>
+  </form>
+  <div class="panel ad-prev-panel"><h3>${esc(t('ad_preview'))}</h3><div id="lkPrev"></div><p class="small" style="margin-top:10px">${esc(t('lk_prevHint'))}</p></div></div>`;
+  paintLookPreview();
+}
+function paintLookPreview(){
+  const d=lookDraft, box=$('#lkPrev'); if(!box) return; const [b,a]=lookColors(d);
+  const name=lang==='ar'?(d.nameAr||DEF.arName):(d.nameEn||DEF.enName), ht=lang==='ar'?(d.heroTitleAr||DEF.arHT):(d.heroTitleEn||DEF.enHT), hs=lang==='ar'?(d.heroSubAr||DEF.arHS):(d.heroSubEn||DEF.enHS);
+  box.innerHTML=`<div class="lk-prev" style="--brand:${b};--accent:${a}"><div class="ph"><span class="mk">${d.logo?`<img src="${esc(d.logo)}" alt="">`:'🏙️'}</span><span dir="auto">${esc(name)}</span><span class="pill">${esc(t('tabFind'))}</span></div>
+    <div class="hero" id="lkHero"><div class="wrap"><h1 dir="auto">${esc(ht)}</h1><p dir="auto">${esc(hs)}</p><div class="fake"><span>${esc(t('searchPh'))}</span></div></div></div>
+    <div class="chips2"><b>${esc(t('all'))}</b><b>${catIcon('gov')} ${esc(catLabel('gov'))}</b><b class="ac">${esc(t('ad_sponsored'))}</b></div></div>`;
+  paintHero($('#lkHero'),d,b);
+  applyLook(d);
+}
+function readLookForm(){ const f=$('#lookForm'); if(!f) return lookDraft; const g=k=>f.elements[k]; const val=k=>g(k)?String(g(k).value||'').trim():lookDraft[k];
+  const out={...lookDraft}; ['nameEn','nameAr','heroTitleEn','heroTitleAr','heroSubEn','heroSubAr','brand','accent','heroColor'].forEach(k=>{ if(g(k)) out[k]=val(k); });
+  const m=f.querySelector('input[name=heroMode]:checked'); if(m) out.heroMode=m.value; if(g('heroDim')) out.heroDim=+g('heroDim').value; return out; }
+$('#admBody').addEventListener('input',e=>{ if(!e.target.closest('#lookForm')) return; lookDraft=readLookForm();
+  if(e.target.name==='heroDim'){ const o=$('#lkDimV'); if(o) o.textContent=e.target.value+'%'; }
+  if(e.target.type==='color'){ const c=e.target.parentElement.querySelector('code'); if(c) c.textContent=e.target.value; }
+  paintLookPreview(); });
+$('#admBody').addEventListener('change',async e=>{
+  if(!e.target.closest('#lookForm')) return;
+  if(e.target.id==='lkLogo'||e.target.id==='lkPhoto'){ const file=e.target.files[0]; if(!file) return; const msg=$('#lkMsg'); msg.style.color='var(--muted)'; msg.textContent=t('tr_loading');
+    try{ lookDraft=readLookForm(); if(e.target.id==='lkLogo') lookDraft.logo=await shrinkTo(file,256,256,true); else lookDraft.heroPhoto=await shrinkTo(file,1600,700,false); renderLook(); }
+    catch(err){ msg.style.color='var(--bad)'; msg.textContent=t('ad_imgFail'); } return; }
+  if(e.target.name==='heroMode'||e.target.name==='heroDim'){ lookDraft=readLookForm(); renderLook(); }
+});
+$('#admBody').addEventListener('click',async e=>{
+  const b=e.target.closest('button'); if(!b||!b.closest('#lookForm,.lk-swatches')) return;
+  if(b.dataset.theme){ lookDraft=readLookForm(); lookDraft.theme=b.dataset.theme; if(b.dataset.theme==='custom'){ const [c1,c2]=lookColors({...lookDraft,theme:site.theme&&site.theme!=='custom'?site.theme:'teal'}); lookDraft.brand=validHex(lookDraft.brand)?lookDraft.brand:c1; lookDraft.accent=validHex(lookDraft.accent)?lookDraft.accent:c2; } renderLook(); return; }
+  if(b.dataset.lkclear){ lookDraft=readLookForm(); lookDraft[b.dataset.lkclear]=''; renderLook(); return; }
+  if('lkundo' in b.dataset){ lookDraft={theme:'teal',heroMode:'theme',heroDim:35,...site}; renderLook(); return; }
+  if('lkreset' in b.dataset){ lookDraft={theme:'teal',heroMode:'theme',heroDim:35}; renderLook(); const m=$('#lkMsg'); m.style.color='var(--muted)'; m.textContent=t('lk_resetHint'); return; }
+},true);
+$('#admBody').addEventListener('submit',async e=>{
+  if(e.target.id!=='lookForm') return; e.preventDefault();
+  const d=readLookForm(), msg=$('#lkMsg');
+  if(d.heroMode==='photo'&&!d.heroPhoto){ msg.style.color='var(--bad)'; msg.textContent=t('lk_noPhoto'); return; }
+  const keep=['nameEn','nameAr','logo','theme','brand','accent','heroMode','heroColor','heroPhoto','heroDim','heroTitleEn','heroTitleAr','heroSubEn','heroSubAr'];
+  const data={}; keep.forEach(k=>{ if(d[k]!==undefined&&d[k]!==null) data[k]=d[k]; });
+  if(data.heroMode!=='photo') delete data.heroPhoto;
+  data.updatedAt=new Date().toISOString(); data.updatedBy=me?.email||'';
+  const btn=e.target.querySelector('button[type=submit]'); btn.disabled=true;
+  try{ await store.saveSettings(data); lookDraft=null; setSite(data); toast(t('lk_saved')); renderLook(); }
+  catch(err){ handleWriteErr(err); }
+  finally{ btn.disabled=false; }
+});
 
 /* ================= ADVERTS ================= */
 let ads=[], adEdit=null, adConfirm=null, adStats=null, adImg='';
@@ -659,6 +788,7 @@ $('#roleSel').addEventListener('change',e=>store.setRole(e.target.value));
 window.matchMedia('(max-width:700px)').addEventListener?.('change',()=>renderAuth());
 
 function onUser(u){
+  if(!u?.isAdmin) leaveLook();
   me=u; admList={rows:null,busy:false,err:false}; trCache={key:'',rows:null,err:false,busy:false};
   if(unsubMine){unsubMine();unsubMine=null;} if(unsubAll){unsubAll();unsubAll=null;}
   mySub=null; allSubs=[];
@@ -687,6 +817,7 @@ const loadTimer=setTimeout(()=>{ if(!ready) $('#findNotice').innerHTML=`<div cla
     clearTimeout(loadTimer); $('#findNotice').innerHTML=''; ready=true;
     listings=list; renderAll();
   }, err=>{ clearTimeout(loadTimer); ready=true; console.error(err); $('#findNotice').innerHTML=`<div class="notice">${esc(t('loadFail'))}</div>`; $('#resultCount').textContent=''; });
+  store.onSettings(s=>setSite(s), err=>console.error(err));
   store.onAds(list=>{ ads=list; if(ready) renderAdTop(), renderGrid(); if(st.tab==='admin'&&st.admSec==='ads'&&!adEdit) renderAdsAdmin(); }, err=>console.error(err));
   store.onAuth(u=>{
     onUser(u);

@@ -49,6 +49,12 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // Site look (logo, name, colours, banner): everyone reads, only admins change it.
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if isAdmin() && id == 'site';
+    }
+
     // Adverts: everyone can read (the site shows the ones running now), only admins manage them.
     match /ads/{adId} {
       allow read: if true;

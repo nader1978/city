@@ -100,6 +100,15 @@ const CATS = [
 
 const EXTRA = {
  en:{
+  admSec_look:'Appearance', lk_title:'Appearance', lk_sub:'Change the logo, name, colours and main banner. Visitors see the changes as soon as you save.',
+  lk_secBrand:'Name & logo', lk_nameEn:'App name (English)', lk_nameAr:'App name (Arabic)', lk_logo:'Logo', lk_logoHint:'(square image works best; PNG with a transparent background is ideal)',
+  lk_secTheme:'Colour theme', lk_th_teal:'Teal', lk_th_navy:'Navy', lk_th_emerald:'Emerald', lk_th_maroon:'Maroon', lk_th_royal:'Royal', lk_th_ocean:'Ocean', lk_th_charcoal:'Charcoal', lk_th_custom:'Custom',
+  lk_main:'Main colour', lk_accent:'Highlight colour', lk_lowContrast:'This main colour is quite light, so white text on it may be hard to read. A darker shade is recommended.',
+  lk_secBanner:'Main banner', lk_mode_theme:'Theme colour', lk_mode_color:'One colour', lk_mode_photo:'Photo', lk_bannerColor:'Banner colour',
+  lk_photo:'Banner photo', lk_photoHint:'(wide photo, e.g. 1600 × 600)', lk_noPhoto:'Choose a photo for the banner.', lk_dim:'Darken the photo so the text stays readable',
+  lk_htEn:'Banner headline (English)', lk_htAr:'Banner headline (Arabic)', lk_hsEn:'Banner subtitle (English)', lk_hsAr:'Banner subtitle (Arabic)',
+  lk_save:'Save appearance', lk_undo:'Undo changes', lk_reset:'Back to default', lk_resetHint:'Default look loaded. Press Save to apply it for everyone.', lk_saved:'Appearance saved',
+  lk_prevHint:'The page behind also shows your changes while you edit. They are only saved for everyone when you press Save.',
   admSec_ads:'Adverts', ad_titleT:'Adverts', ad_sub:'Promote a service provider for a set period. Adverts appear and disappear on their own at the start and end time.',
   ad_sponsored:'Sponsored', ad_view:'View', ad_visit:'Visit', ad_new:'New advert', ad_editT:'Edit advert', ad_listHint:'Live adverts show on the Find page, marked “Sponsored”.',
   ad_none:'No adverts yet', ad_noneSub:'Create one to promote a service provider for a chosen time.',
@@ -135,6 +144,15 @@ const EXTRA = {
   role_resident:'Resident', role_provider:'Provider', role_admin:'Admin', from:'From', signInFail:'Sign-in failed. Please try again.',
   noPerm:'You don’t have permission to do that.', err_domain:'Sign-in blocked: add this domain in Firebase → Authentication → Settings → Authorized domains:', err_provider:'Google sign-in is not enabled. Turn it on in Firebase → Authentication → Sign-in method.', err_popup:'Your browser blocked the sign-in popup. Allow popups for this site and try again.', loadFail:'The directory couldn’t be loaded right now.' },
  ar:{
+  admSec_look:'المظهر', lk_title:'المظهر', lk_sub:'غيّر الشعار والاسم والألوان والشريط الرئيسي. يرى الزوار التغييرات فور الحفظ.',
+  lk_secBrand:'الاسم والشعار', lk_nameEn:'اسم التطبيق (بالإنجليزية)', lk_nameAr:'اسم التطبيق (بالعربية)', lk_logo:'الشعار', lk_logoHint:'(الصورة المربعة أفضل؛ ويفضّل PNG بخلفية شفافة)',
+  lk_secTheme:'ألوان التطبيق', lk_th_teal:'أخضر مزرق', lk_th_navy:'كحلي', lk_th_emerald:'زمردي', lk_th_maroon:'عنابي', lk_th_royal:'بنفسجي', lk_th_ocean:'أزرق المحيط', lk_th_charcoal:'رمادي داكن', lk_th_custom:'مخصص',
+  lk_main:'اللون الرئيسي', lk_accent:'لون التمييز', lk_lowContrast:'هذا اللون الرئيسي فاتح، وقد يصعب قراءة النص الأبيض عليه. يُنصح بدرجة أغمق.',
+  lk_secBanner:'الشريط الرئيسي', lk_mode_theme:'لون التطبيق', lk_mode_color:'لون واحد', lk_mode_photo:'صورة', lk_bannerColor:'لون الشريط',
+  lk_photo:'صورة الشريط', lk_photoHint:'(صورة عريضة، مثل ١٦٠٠ × ٦٠٠)', lk_noPhoto:'اختر صورة للشريط.', lk_dim:'تعتيم الصورة ليبقى النص واضحاً',
+  lk_htEn:'عنوان الشريط (بالإنجليزية)', lk_htAr:'عنوان الشريط (بالعربية)', lk_hsEn:'النص الفرعي (بالإنجليزية)', lk_hsAr:'النص الفرعي (بالعربية)',
+  lk_save:'حفظ المظهر', lk_undo:'تراجع عن التغييرات', lk_reset:'العودة للافتراضي', lk_resetHint:'تم تحميل المظهر الافتراضي. اضغط حفظ لتطبيقه على الجميع.', lk_saved:'تم حفظ المظهر',
+  lk_prevHint:'تظهر تغييراتك أيضاً في الصفحة خلفك أثناء التعديل، ولا تُحفظ للجميع إلا عند الضغط على حفظ.',
   admSec_ads:'الإعلانات', ad_titleT:'الإعلانات', ad_sub:'روّج لمقدّم خدمة لفترة محددة. تظهر الإعلانات وتختفي تلقائياً في وقت البداية والنهاية.',
   ad_sponsored:'إعلان', ad_view:'عرض', ad_visit:'زيارة', ad_new:'إعلان جديد', ad_editT:'تعديل الإعلان', ad_listHint:'تظهر الإعلانات الجارية في صفحة البحث مع علامة «إعلان».',
   ad_none:'لا توجد إعلانات بعد', ad_noneSub:'أنشئ إعلاناً للترويج لمقدّم خدمة في وقت تختاره.',

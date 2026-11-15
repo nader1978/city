@@ -88,6 +88,12 @@ Admin opens "Admin" tab ◄─────────────────�
 
 > After updating the site, paste the new `firestore.rules` into Firebase and click **Publish**. Without it, adding admins and counting traffic won't work.
 
+## Appearance
+
+**Admin → Appearance**: change the app name (English / Arabic) and logo, pick a colour theme (Teal, Navy, Emerald, Maroon, Royal, Ocean, Charcoal) or your own colours, and set the main banner to the theme colour, one colour of your choice, or a photo (with a darkness slider so the text stays readable). The banner headline and subtitle can be changed too. A live preview shows the result; visitors see it as soon as you press **Save**. **Back to default** restores the original look.
+
+Note: the icon used when someone adds the site to their phone's home screen comes from the `icons` folder. To change that too, replace `icons/icon-192.png`, `icons/icon-512.png` and `icons/icon-maskable-512.png` with your logo.
+
 ## Adverts
 
 **Admin → Adverts**: create an advert for any service provider (headline and short text in English and/or Arabic, optional image, and where it leads when tapped: a listing in the guide or a website). Choose the **start and end date and time**: it appears and disappears on its own. Choose the position (top banner, in the results list, or both) and optionally a category. Adverts are marked “Sponsored” / «إعلان». Each advert shows its views, clicks and click rate. You can pause, duplicate, edit or delete adverts.

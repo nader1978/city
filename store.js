@@ -65,6 +65,10 @@ export async function firebaseStore(cfg){
     addAdmin: (email, by) => F.setDoc(F.doc(db, 'admins', normEmail(email)), { addedBy: by || '', addedAt: now() }),
     removeAdmin: email => F.deleteDoc(F.doc(db, 'admins', normEmail(email))),
 
+    /* site look: logo, name, colours, banner (one document) */
+    onSettings: (cb, err) => F.onSnapshot(F.doc(db, 'settings', 'site'), d => cb(d.exists() ? d.data() : {}), err),
+    saveSettings: data => F.setDoc(F.doc(db, 'settings', 'site'), data),
+
     /* adverts */
     onAds: (cb, err) => F.onSnapshot(F.collection(db, 'ads'), s => cb(s.docs.map(d => ({ _id: d.id, ...d.data() }))), err),
     saveAd: (id, data) => F.setDoc(F.doc(db, 'ads', id), data),
@@ -115,10 +119,10 @@ export function demoStore(){
     try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.listings) return s; } catch(e){}
     const at = new Date().toISOString(), listings = {};
     Object.entries(SAMPLES).forEach(([id, l]) => listings[id] = { ...l, approvedAt: at });
-    return { listings, submissions: {}, role: 'resident', admins: {}, stats: {}, ads: {} };
+    return { listings, submissions: {}, role: 'resident', admins: {}, stats: {}, ads: {}, settings: {} };
   };
   let S = load();
-  const L = { auth:new Set(), listings:new Set(), all:new Set(), mine:new Map(), ads:new Set() };
+  const L = { auth:new Set(), listings:new Set(), all:new Set(), mine:new Map(), ads:new Set(), settings:new Set() };
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} emit(); };
   const user = () => DEMO_USERS[S.role] || null;
   const listingsArr = () => Object.entries(S.listings).map(([id, v]) => ({ _id:id, ...v }));
@@ -127,6 +131,7 @@ export function demoStore(){
   function emit(){
     L.listings.forEach(cb => cb(listingsArr()));
     L.ads.forEach(cb => cb(adsArr()));
+    L.settings.forEach(cb => cb({ ...(S.settings || {}) }));
     L.all.forEach(cb => cb(subsArr()));
     L.mine.forEach((uid, cb) => cb(S.submissions[uid] ? structuredClone(S.submissions[uid]) : null));
   }
@@ -159,6 +164,8 @@ export function demoStore(){
     },
     owners: ['admin@demo'],
     onAds: cb => sub(L.ads, cb, adsArr),
+    onSettings: cb => sub(L.settings, cb, () => ({ ...(S.settings || {}) })),
+    saveSettings: async data => { guardAdmin(); S.settings = data; save(); },
     saveAd: async (id, data) => { guardAdmin(); S.ads = S.ads || {}; S.ads[id] = data; save(); },
     deleteAd: async id => { guardAdmin(); if (S.ads) delete S.ads[id]; save(); },
     listAdmins: async () => { guardAdmin(); return Object.entries(S.admins || {}).map(([email, v]) => ({ email, ...v })); },
