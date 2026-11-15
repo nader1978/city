@@ -78,6 +78,22 @@ Admin opens "Admin" tab ◄─────────────────�
 - Providers can ask for a listing to be removed, and the admin confirms.
 - The search understands Arabic spelling variants (أ/إ/ا, ة/ه, ى/ي, diacritics) and searches both languages at once.
 
+---
+
+## Admins and visitor traffic
+
+**Admin → Admins**: add any Google email as an admin. That person gets admin access as soon as they sign in with that Google account. Remove them the same way. The owner email (in `config.js` and `firestore.rules`) is a permanent admin and can't be removed in the app, so you can't lock yourself out.
+
+**Admin → Traffic** (admins only): visitors, visits, page views, searches, searches with no results, most-viewed services, calls / WhatsApp / directions taps, categories, devices and language, for the last 7, 30 or 90 days. The site counts these itself in Firestore (`stats/<day>`). Google Analytics keeps running alongside for deeper reports.
+
+> After updating the site, paste the new `firestore.rules` into Firebase and click **Publish**. Without it, adding admins and counting traffic won't work.
+
+## Adverts
+
+**Admin → Adverts**: create an advert for any service provider (headline and short text in English and/or Arabic, optional image, and where it leads when tapped: a listing in the guide or a website). Choose the **start and end date and time**: it appears and disappears on its own. Choose the position (top banner, in the results list, or both) and optionally a category. Adverts are marked “Sponsored” / «إعلان». Each advert shows its views, clicks and click rate. You can pause, duplicate, edit or delete adverts.
+
+Images are shrunk to banner size and stored with the advert, so Firebase Storage isn't needed.
+
 ## Customising
 
 - **Categories:** edit the `CATS` list in `i18n.js` (English label, Arabic label and emoji).

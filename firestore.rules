@@ -2,20 +2,29 @@ rules_version = '2';
 
 // City Services Guide — Firestore security rules
 // Paste this into Firebase Console → Firestore Database → Rules → Publish.
-// Admin email(s) must match adminEmails in config.js.
+//
+// OWNER: the email below is the permanent admin. It can't be removed in the app,
+// so you can never lock yourself out. It must match adminEmails in config.js.
+// OTHER ADMINS: added and removed in the app (Admin → Admins).
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() {
-      return request.auth != null;
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+    function isOwner() {
+      return signedIn() && myEmail() in ['nader.alnajjar@gmail.com'];
     }
     function isAdmin() {
-      return signedIn()
-        && request.auth.token.email_verified == true
-        && request.auth.token.email.lower() in [
-          'nader.alnajjar@gmail.com'
-        ];
+      return isOwner()
+        || (signedIn() && exists(/databases/$(database)/documents/admins/$(myEmail())));
+    }
+    function today() {
+      return string(request.time.year() * 10000 + request.time.month() * 100 + request.time.day());
     }
 
     // Published (verified) listings: everyone can read, only admins write.
@@ -24,12 +33,36 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Each provider's submissions live in one document keyed by their user id.
+    // Each provider's submissions: one document per user.
     // Providers read/write only their own; admins read/write all.
-    // (A provider editing their own status can't publish anything:
-    //  only admins can write to /listings.)
     match /submissions/{userId} {
-      allow read, write: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Admin list: document id = the admin's Google email (lower case).
+    // Admins manage it; anyone signed in can check only their own entry.
+    match /admins/{email} {
+      allow read: if isAdmin() || (signedIn() && email == myEmail());
+      allow create: if isAdmin() && email == email.lower()
+                    && request.resource.data.keys().hasOnly(['addedBy', 'addedAt']);
+      allow delete: if isAdmin() && email != myEmail();
+      allow update: if false;
+    }
+
+    // Adverts: everyone can read (the site shows the ones running now), only admins manage them.
+    match /ads/{adId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Visitor traffic: one document per day (UTC), e.g. stats/20261115.
+    // Visitors can only add to today's counters; only admins can read them.
+    match /stats/{day} {
+      allow read: if isAdmin();
+      allow create, update: if day == today()
+        && request.resource.data.keys().hasOnly(
+             ['visits', 'visitors', 'pv', 'search', 'nores', 'view', 'lead', 'contact', 'cat', 'dev', 'lang', 'submit', 'adv', 'adc']);
+      allow delete: if false;
     }
 
     // Everything else is closed.

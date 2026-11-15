@@ -3,6 +3,14 @@
 
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 
+/* UTC day id, e.g. 20261115 (the security rules check the same format) */
+export const dayId = (d = new Date()) => d.toISOString().slice(0, 10).replace(/-/g, '');
+/* clean a text so it can be a key in the traffic counters */
+export const statKey = s => String(s || '').toLowerCase().replace(/[.~*/\[\]`$#]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const normEmail = e => String(e || '').trim().toLowerCase();
+export const validEmail = e => EMAIL_RE.test(normEmail(e));
+
 export function isConfigured(cfg){
   const k = cfg?.firebase?.apiKey || '';
   return !!k && !k.startsWith('PASTE');
@@ -18,16 +26,22 @@ export async function firebaseStore(cfg){
   const app = initializeApp(cfg.firebase);
   const auth = A.getAuth(app);
   const db = F.getFirestore(app);
-  const admins = (cfg.adminEmails || []).map(e => String(e).toLowerCase());
-  const toUser = u => u ? {
-    uid: u.uid, email: u.email || '', name: u.displayName || u.email || '',
-    isAdmin: !!u.email && u.emailVerified && admins.includes(u.email.toLowerCase())
-  } : null;
+  const owners = (cfg.adminEmails || []).map(normEmail);
+  const toUser = async u => {
+    if (!u) return null;
+    const email = normEmail(u.email), ok = !!email && u.emailVerified;
+    const isOwner = ok && owners.includes(email);
+    let isAdmin = isOwner;
+    if (ok && !isAdmin) { try { isAdmin = (await F.getDoc(F.doc(db, 'admins', email))).exists(); } catch (e) { isAdmin = false; } }
+    return { uid: u.uid, email, name: u.displayName || email, isAdmin, isOwner };
+  };
+  const inc = o => { const r = {}; for (const k in o) r[k] = (o[k] && typeof o[k] === 'object') ? inc(o[k]) : F.increment(o[k]); return r; };
   const now = () => new Date().toISOString();
 
   return {
     mode: 'firebase',
-    onAuth: cb => A.onAuthStateChanged(auth, u => cb(toUser(u))),
+    owners,
+    onAuth: cb => A.onAuthStateChanged(auth, async u => cb(await toUser(u))),
     signIn: () => A.signInWithPopup(auth, new A.GoogleAuthProvider()),
     signOut: () => A.signOut(auth),
 
@@ -44,7 +58,22 @@ export async function firebaseStore(cfg){
     patchItem: (uid, id, patch, meta = {}) => F.setDoc(F.doc(db, 'submissions', uid),
       { ...meta, items: { [id]: patch }, updatedAt: now() }, { merge: true }),
     deleteItem: (uid, id) => F.updateDoc(F.doc(db, 'submissions', uid),
-      { ['items.' + id]: F.deleteField(), updatedAt: now() })
+      { ['items.' + id]: F.deleteField(), updatedAt: now() }),
+
+    /* admins (any Google account an admin adds) */
+    listAdmins: async () => (await F.getDocs(F.collection(db, 'admins'))).docs.map(d => ({ email: d.id, ...d.data() })),
+    addAdmin: (email, by) => F.setDoc(F.doc(db, 'admins', normEmail(email)), { addedBy: by || '', addedAt: now() }),
+    removeAdmin: email => F.deleteDoc(F.doc(db, 'admins', normEmail(email))),
+
+    /* adverts */
+    onAds: (cb, err) => F.onSnapshot(F.collection(db, 'ads'), s => cb(s.docs.map(d => ({ _id: d.id, ...d.data() }))), err),
+    saveAd: (id, data) => F.setDoc(F.doc(db, 'ads', id), data),
+    deleteAd: id => F.deleteDoc(F.doc(db, 'ads', id)),
+
+    /* traffic counters: one document per day, numbers only go up */
+    hit: o => F.setDoc(F.doc(db, 'stats', dayId()), inc(o), { merge: true }),
+    getStats: async (from, to) => (await F.getDocs(F.query(F.collection(db, 'stats'),
+      F.where(F.documentId(), '>=', from), F.where(F.documentId(), '<=', to)))).docs.map(d => ({ id: d.id, ...d.data() }))
   };
 }
 
@@ -78,7 +107,7 @@ const SAMPLES = {
 const DEMO_USERS = {
   resident: null,
   provider: { uid:'demo-provider', email:'provider@demo', name:'Demo Provider', isAdmin:false },
-  admin:    { uid:'demo-admin',    email:'admin@demo',    name:'Demo Admin',    isAdmin:true }
+  admin:    { uid:'demo-admin',    email:'admin@demo',    name:'Demo Admin',    isAdmin:true, isOwner:true }
 };
 
 export function demoStore(){
@@ -86,16 +115,18 @@ export function demoStore(){
     try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.listings) return s; } catch(e){}
     const at = new Date().toISOString(), listings = {};
     Object.entries(SAMPLES).forEach(([id, l]) => listings[id] = { ...l, approvedAt: at });
-    return { listings, submissions: {}, role: 'resident' };
+    return { listings, submissions: {}, role: 'resident', admins: {}, stats: {}, ads: {} };
   };
   let S = load();
-  const L = { auth:new Set(), listings:new Set(), all:new Set(), mine:new Map() };
+  const L = { auth:new Set(), listings:new Set(), all:new Set(), mine:new Map(), ads:new Set() };
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} emit(); };
   const user = () => DEMO_USERS[S.role] || null;
   const listingsArr = () => Object.entries(S.listings).map(([id, v]) => ({ _id:id, ...v }));
+  const adsArr = () => Object.entries(S.ads || {}).map(([id, v]) => ({ _id:id, ...v }));
   const subsArr = () => Object.entries(S.submissions).map(([id, v]) => ({ _id:id, ...v }));
   function emit(){
     L.listings.forEach(cb => cb(listingsArr()));
+    L.ads.forEach(cb => cb(adsArr()));
     L.all.forEach(cb => cb(subsArr()));
     L.mine.forEach((uid, cb) => cb(S.submissions[uid] ? structuredClone(S.submissions[uid]) : null));
   }
@@ -125,6 +156,17 @@ export function demoStore(){
     deleteItem: async (uid, id) => {
       const u = user(); if (!u || (u.uid !== uid && !u.isAdmin)) throw { code:'permission-denied' };
       if (S.submissions[uid]?.items) delete S.submissions[uid].items[id]; save();
-    }
+    },
+    owners: ['admin@demo'],
+    onAds: cb => sub(L.ads, cb, adsArr),
+    saveAd: async (id, data) => { guardAdmin(); S.ads = S.ads || {}; S.ads[id] = data; save(); },
+    deleteAd: async id => { guardAdmin(); if (S.ads) delete S.ads[id]; save(); },
+    listAdmins: async () => { guardAdmin(); return Object.entries(S.admins || {}).map(([email, v]) => ({ email, ...v })); },
+    addAdmin: async (email, by) => { guardAdmin(); S.admins = S.admins || {}; S.admins[normEmail(email)] = { addedBy: by || '', addedAt: new Date().toISOString() }; save(); },
+    removeAdmin: async email => { guardAdmin(); if (S.admins) delete S.admins[normEmail(email)]; save(); },
+    hit: async o => { S.stats = S.stats || {}; const id = dayId(); S.stats[id] = S.stats[id] || {};
+      const add = (t, src) => { for (const k in src) { if (src[k] && typeof src[k] === 'object') { t[k] = t[k] || {}; add(t[k], src[k]); } else t[k] = (t[k] || 0) + src[k]; } };
+      add(S.stats[id], o); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} },
+    getStats: async (from, to) => { guardAdmin(); return Object.entries(S.stats || {}).filter(([id]) => id >= from && id <= to).map(([id, v]) => ({ id, ...v })); }
   };
 }
